@@ -1,0 +1,24 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<Import Project="$(Projects_Cache)" />
+
+	<Target Name="Filter_Zero_Reference_Projects" Inputs="@(Projects)" Outputs="%(Identity).Dummy">
+		<ItemGroup>
+			<DCPfile Include="%(Projects.DCPs)" />
+			<DCPfile_Filtered Include="@(DCPfile)" Exclude="$(Library_DCPs_Filename)" />
+			<Projects>
+				<DCPs>@(DCPfile_Filtered)</DCPs>
+			</Projects>
+			<Zero_Reference_Projects Include="@(Projects)" Condition="%(Projects.DCPs) == ''" />
+		</ItemGroup>
+	</Target>
+
+	<Target Name="Select_Projects" DependsOnTargets="Filter_Zero_Reference_Projects" Outputs="@(Zero_Reference_Projects)" />
+
+    <Target Name="Remove_Projects" Outputs="@(Projects)">
+        <ItemGroup>
+            <Projects Remove="$(Projects_To_Remove)" />
+        </ItemGroup>
+    </Target>
+
+</Project>
+

@@ -1,0 +1,95 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+
+    <ItemGroup>
+        <GroupProj Include="$(GroupProjs)" />
+    </ItemGroup>
+
+	<Target Name="Get_Library_DCPs">
+		<ItemGroup>
+            <To_Dirs Include="$(LibraryDirs)" />
+            <To_DCP_Dirs Include="@(To_Dirs->'%(Identity)\**\*.dcp')" />
+			<Library_DCPs Include="%(To_DCP_Dirs.Identity)" />
+            <To_Dirs Remove="@(To_Dirs)" />
+            <To_DCP_Dirs Remove="@(To_DCP_Dirs)" />
+		</ItemGroup>
+		<PropertyGroup>
+			<Library_DCPs_Filename>@(Library_DCPs->'%(Filename)%(Extension)')</Library_DCPs_Filename>
+		</PropertyGroup>
+        <ItemGroup>
+            <Library_DCPs Remove="@(Library_DCPs)" />
+        </ItemGroup>
+	</Target>
+
+    <Target Name="BuildVersionResource">
+        <MSBuild BuildInParallel="false" Targets="BuildVersionResource" ContinueOnError="ErrorAndStop" Projects="@(Projects)"/>
+    </Target>
+
+    <Target Name="Build_Zero_Reference_Projects" Condition="Exists($(Projects_Cache))">
+        <MSBuild Projects="software.msbuild.dproj.targets" Targets="Select_Projects" Properties="Projects_Cache=$(Projects_Cache);Library_DCPs_Filename=$(Library_DCPs_Filename)">
+			<Output TaskParameter="TargetOutputs" ItemName="Zero_Reference_Projects" />
+        </MSBuild>
+
+        <MSBuild BuildInParallel="true" Targets="Build" ContinueOnError="ErrorAndStop" Properties="SkipResGeneration=true" Projects="@(Zero_Reference_Projects)"/>
+
+        <PropertyGroup>
+            <Zero_Reference_Projects>@(Zero_Reference_Projects)</Zero_Reference_Projects>
+        </PropertyGroup>
+
+        <MSBuild Projects="software.msbuild.dproj.targets" Targets="Remove_Projects" Properties="Projects_Cache=$(Projects_Cache);Projects_To_Remove=$(Zero_Reference_Projects)">
+			<Output TaskParameter="TargetOutputs" ItemName="Temp" />
+        </MSBuild>
+
+        <ItemGroup>
+            <Projects Remove="@(Projects)" />
+            <Projects Include="@(Temp)" />
+            <Temp Remove="@(Temp)" />
+        </ItemGroup>
+    </Target>
+
+    <Target Name="Build_Projects" DependsOnTargets="Build_Zero_Reference_Projects" Condition="$(Continue)">
+        <Message Text="$(Counter). Build_Projects: @(Zero_Reference_Projects->Count())/@(Projects->Count())" Importance="High" />
+		<PropertyGroup>
+            <Zero_Reference_Projects_Count>@(Zero_Reference_Projects->Count())</Zero_Reference_Projects_Count>
+            <Continue>true</Continue>
+            <Continue Condition="($(Counter) > 0) And ($(Zero_Reference_Projects_Count) == 0)">false</Continue>
+			<Counter>$([MSBuild]::Add($(Counter), 1))</Counter>
+            <Projects_Cache>$(TEMP)\$(ActiveProjectModule)_$(Counter).xml</Projects_Cache>
+            <Library_DCPs_Filename>$(Library_DCPs_Filename);@(Zero_Reference_Projects->'%(Filename).dcp')</Library_DCPs_Filename>
+		</PropertyGroup>
+
+        <WriteLinesToFile File="$(Projects_Cache)" Encoding="Unicode" Overwrite="true"
+            Lines="%3CProject xmlns=%22http://schemas.microsoft.com/developer/msbuild/2003%22%3e" />
+
+        <WriteLinesToFile File="$(Projects_Cache)" Encoding="Unicode" Overwrite="false"
+            Lines="%3cItemGroup%3e" />
+
+        <WriteLinesToFile File="$(Projects_Cache)" Encoding="Unicode" Overwrite="false"
+            Lines="@(Projects->'%3cProjects Include=%22%(Identity)%22%3e%3cDCPs%3e%(DCPs)%3c%2FDCPs%3e%3cAppType%3e%(AppType)%3c%2fAppType%3e%3c%2fProjects%3e')" />
+
+        <WriteLinesToFile File="$(Projects_Cache)" Encoding="Unicode" Overwrite="false"
+            Lines="%3c%2fItemGroup%3e" />
+
+        <WriteLinesToFile File="$(Projects_Cache)" Encoding="Unicode" Overwrite="false"
+            Lines="%3c%2fProject%3e" />
+
+        <MSBuild Projects="$(MSBuildProjectFile)" Targets="Build_Projects" Properties="Counter=$(Counter);Continue=$(Continue);Projects_Cache=$(Projects_Cache);Library_DCPs_Filename=$(Library_DCPs_Filename)" />
+
+        <Delete Files="$(Projects_Cache)" />
+    </Target>
+
+    <Target Name="Process_GroupProjs" Inputs="@(GroupProj)" Outputs="%(Identity).Dummy">
+        <MSBuild Projects="software.msbuild.groupproj.targets" Targets="GroupProj_to_Projects" Properties="GroupProj=%(GroupProj.Identity)">
+            <Output TaskParameter="TargetOutputs" ItemName="Projects" />
+        </MSBuild>
+    </Target>
+
+    <Target Name="Init">
+        <PropertyGroup>
+            <Counter>0</Counter>
+            <Continue>true</Continue>
+        </PropertyGroup>
+    </Target>
+
+    <Target Name="Build" DependsOnTargets="Get_Library_DCPs;Process_GroupProjs;Init;BuildVersionResource;Build_Projects" />
+</Project>
+

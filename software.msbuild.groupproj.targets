@@ -1,0 +1,42 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+	<Import Project="$(GroupProj)" />
+
+	<Target Name="GetGroupProjPath">
+		<ItemGroup>
+			<GroupProj Include="$(GroupProj)" />
+		</ItemGroup>
+
+		<PropertyGroup>
+			<GroupProjPath>@(GroupProj->'%(RootDir)%(Directory)')</GroupProjPath>
+		</PropertyGroup>
+	</Target>
+
+	<Target Name="Get_Projects" DependsOnTargets="GetGroupProjPath" Outputs="@(Projects)">
+		<ItemGroup>
+		    <Temp Include="@(Projects->'$(GroupProjPath)%(Identity)')" />
+            <Projects Remove="@(Projects)" />
+			<Projects Include="@(Temp)" />
+            <Temp Remove="@(Temp)" />
+		</ItemGroup>
+	</Target>
+
+	<Target Name="Get_Project_Metadata" Inputs="@(Projects)" Outputs="%(Identity).Dummy">
+		<MSBuild Projects="software.msbuild.dcp.targets" Targets="Get_Projects_DCP" Properties="ProjectFile=%(Projects.Identity)">
+			<Output TaskParameter="TargetOutputs" ItemName="Projects_DCPs" />
+		</MSBuild>
+
+		<MSBuild Projects="software.msbuild.dcp.targets" Targets="Get_Projects_AppType" Properties="ProjectFile=%(Projects.Identity)">
+			<Output TaskParameter="TargetOutputs" PropertyName="AppType" />
+		</MSBuild>
+
+		<ItemGroup>
+			<Projects>
+				<DCPs>@(Projects_DCPs)</DCPs>
+				<AppType>$(AppType)</AppType>
+			</Projects>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="GroupProj_to_Projects" Condition="Exists($(GroupProj))" DependsOnTargets="Get_Projects;Get_Project_Metadata" Outputs="@(Projects)"/>
+</Project>
+

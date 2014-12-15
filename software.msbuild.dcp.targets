@@ -1,0 +1,21 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<Import Project="$(ProjectFile)" />
+
+	<Target Name="Get_Package_DCP" Condition="$(AppType) == Package">
+		<ItemGroup>
+			<DCP Include="@(DCCReference)" Condition="%(Extension) == '.dcp'"/>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="Get_Non_Package_DCP" Condition="($(AppType) != Package) And ($(UsePackages) == true)">
+		<ItemGroup>
+			<Temp Include="$(DCC_UsePackage)" />
+            <DCP Include="@(Temp->'%(Identity).dcp')" />
+            <Temp Remove="@(Temp)" />
+		</ItemGroup>
+	</Target>
+
+    <Target Name="Get_Projects_DCP" Outputs="@(DCP)" DependsOnTargets="Get_Package_DCP;Get_Non_Package_DCP" />
+
+	<Target Name="Get_Projects_AppType" Outputs="$(AppType)" />
+</Project>
