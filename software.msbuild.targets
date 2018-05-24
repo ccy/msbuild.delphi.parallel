@@ -53,7 +53,7 @@
             <Continue>true</Continue>
             <Continue Condition="($(Counter) > 0) And ($(Zero_Reference_Projects_Count) == 0)">false</Continue>
 			<Counter>$([MSBuild]::Add($(Counter), 1))</Counter>
-            <Projects_Cache>$(TEMP)\$(ActiveProjectModule)_$(Counter).xml</Projects_Cache>
+            <Projects_Cache>$(TEMP)\$([System.DateTime]::Now.ToString(yyyyMMddHHmmssFFF))_$(Counter).xml</Projects_Cache>
             <Library_DCPs_Filename>$(Library_DCPs_Filename);@(Zero_Reference_Projects->'%(Filename).dcp')</Library_DCPs_Filename>
 		</PropertyGroup>
 
