@@ -27,11 +27,20 @@
     <Target Name="Build_Zero_Reference_Projects" Condition="Exists($(Projects_Cache))">
         <MSBuild Projects="software.msbuild.dproj.targets" Targets="Select_Projects" Properties="Projects_Cache=$(Projects_Cache);Library_DCPs_Filename=$(Library_DCPs_Filename)">
 			<Output TaskParameter="TargetOutputs" ItemName="Zero_Reference_Projects" />
-        </MSBuild>
+		</MSBuild>
 
-        <MSBuild BuildInParallel="true" Targets="Build" ContinueOnError="ErrorAndStop" Properties="SkipResGeneration=true" Projects="@(Zero_Reference_Projects)"/>
+		<ItemGroup>
+			<Zero_Reference_Packages Include="@(Zero_Reference_Projects)" Condition="(%(Zero_Reference_Projects.DCPs) == '') And (%(Zero_Reference_Projects.AppType) == 'Package')" />
+		</ItemGroup>
 
-        <PropertyGroup>
+		<ItemGroup>
+			<Zero_Reference_NonPackages Include="@(Zero_Reference_Projects)" Condition="(%(Zero_Reference_Projects.DCPs) == '') And (%(Zero_Reference_Projects.AppType) != 'Package')" />
+		</ItemGroup>
+
+		<MSBuild BuildInParallel="true" Targets="Build" ContinueOnError="ErrorAndStop" Properties="SkipResGeneration=true" Projects="@(Zero_Reference_Packages)"/>
+		<MSBuild BuildInParallel="true" Targets="Build" ContinueOnError="ErrorAndStop" Properties="SkipResGeneration=false" Projects="@(Zero_Reference_NonPackages)"/>
+
+		<PropertyGroup>
             <Zero_Reference_Projects>@(Zero_Reference_Projects)</Zero_Reference_Projects>
         </PropertyGroup>
 
